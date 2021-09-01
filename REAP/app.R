@@ -61,7 +61,8 @@ displaytable = data.frame(
               "Combination", "Combination", "Combination", "Combination")
 )
 
-source("MDPDE.r", local = TRUE)
+source("MDPDE2.R", local = TRUE)
+
 
 # Define UI for application that draws a histogram
 ui <- pageWithSidebar(
@@ -189,8 +190,8 @@ ui <- pageWithSidebar(
                 id = "tabset",
                 tabPanel("Introduction", 
                          value = 1,
-                         h2("Introduction of the Robust Dose Response Estimation"),
-                         h4("Introduction", id = "intro"),
+                         # h2("Introduction of the Robust Dose Response Estimation"),
+                         h3("Objective", id = "intro"),
                          p("The Robust and Efficient Assessment of drug Potency (REAP) is 
                              developed for convenient application of the robust dose-response 
                              estimation to real-world data analysis. It presents a straightforward 
@@ -199,8 +200,8 @@ ui <- pageWithSidebar(
                              statistical comparisons and delivery of customized output for 
                              graphic presentation."),
                          
-                         h4("User's Guide"),
-                         h5("Dataset Input Requirements", id = "exp"),
+                         h3("Illustrative Example"),
+                         h4("Dataset Input Requirements", id = "exp"),
                          tags$ul(
                            tags$li("The input dataset should be in a csv file"),
                            tags$li("The input dataset contains three columns: Concentration, Effect and Agent"),
@@ -214,7 +215,7 @@ ui <- pageWithSidebar(
                                 target='blank', 'Sample Data', download = 'sampledata.csv'),
                          tableOutput("table1"),
                          
-                         h5("Output"),
+                         h4("Output"),
                          p("We upload the example data and obtain the following results in the output tab:"),
                          tags$img(src='shinydemo.png', height="60%", width="60%", align="center"),
                          br(),
@@ -223,7 +224,8 @@ ui <- pageWithSidebar(
                          for comparisons of effect estimations, slopes and models (i.e., comparing both 
                          intercepts and slopes). By default, the x-axis of the dose-response plot is 
                          log-scaled. In the plot, users can choose to add mean values and confidence 
-                         intervals for data points under the same agent and dose level. Both plots and 
+                         intervals for data points under the same agent and dose level. Triangles indicate 
+                         effect estimations. Both plots and 
                          estimation tables are downloadable on REAP to plug in presentations and 
                          manuscripts for result dissemination."),
                          
@@ -268,48 +270,49 @@ server <- function(input, output) {
   
   # Truncation on dataset -----
   dt.truncated <- reactive({
-    nms <- colnames(dt())
-    
-    n = length(unique(dt()[,3]))
-    
-    dt.truncated = NULL
-    for (i in 1:n){
-      d.dt <- subset(dt(), dt()[,3] == as.character(unique(dt()[,3]))[i])
-      nms.dt <- colnames(d.dt)
-      fcn <- as.formula(paste(nms.dt[2], "~log(",nms.dt[1],")"))
-      d.dt[,2][d.dt[,2] <= 1e-6]=1e-6
-      d.dt[,2][d.dt[,2] >= 1 - 1e-6]= 1 - 1e-6
-      error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-      if(class(error)!="try-error"){
-        dt.truncated <- rbind(dt.truncated, d.dt)
-      } else {
-        d.dt[,2][d.dt[,2] <= 1e-5]=1e-5
-        d.dt[,2][d.dt[,2] >= 1 - 1e-5]= 1 - 1e-5
-        error<- try( d.betareg <- betareg(fcn, data = d.dt))
-        if(class(error)!="try-error"){
-          dt.truncated <- rbind(dt.truncated, d.dt)
-        } else {
-          d.dt[,2][d.dt[,2] <= 1e-4]=1e-4
-          d.dt[,2][d.dt[,2] >= 1 - 1e-4]= 1 - 1e-4
-          error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-          if(class(error)!="try-error"){
-            dt.truncated <- rbind(dt.truncated, d.dt)
-          } else {
-            d.dt[,2][d.dt[,2] <= 1e-3]=1e-3
-            d.dt[,2][d.dt[,2] >= 1 - 1e-3]= 1 - 1e-3
-            error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-            if(class(error)!="try-error"){
-              dt.truncated <- rbind(dt.truncated, d.dt)
-            } else {
-              n = nrow(d.dt)
-              d.dt[,2] = (d.dt[,2]*(n-1)+0.5)/n
-              dt.truncated <- rbind(dt.truncated, d.dt)
-            }
-          }
-        }
-      }
-    }
-    dt.truncated
+    # nms <- colnames(dt())
+    # 
+    # n = length(unique(dt()[,3]))
+    # 
+    # dt.truncated = NULL
+    # for (i in 1:n){
+    #   d.dt <- subset(dt(), dt()[,3] == as.character(unique(dt()[,3]))[i])
+    #   nms.dt <- colnames(d.dt)
+    #   fcn <- as.formula(paste(nms.dt[2], "~log(",nms.dt[1],")"))
+    #   d.dt[,2][d.dt[,2] <= 1e-6]=1e-6
+    #   d.dt[,2][d.dt[,2] >= 1 - 1e-6]= 1 - 1e-6
+    #   error<- try( d.betareg <- betareg(fcn, data = d.dt) )
+    #   if(class(error)!="try-error"){
+    #     dt.truncated <- rbind(dt.truncated, d.dt)
+    #   } else {
+    #     d.dt[,2][d.dt[,2] <= 1e-5]=1e-5
+    #     d.dt[,2][d.dt[,2] >= 1 - 1e-5]= 1 - 1e-5
+    #     error<- try( d.betareg <- betareg(fcn, data = d.dt))
+    #     if(class(error)!="try-error"){
+    #       dt.truncated <- rbind(dt.truncated, d.dt)
+    #     } else {
+    #       d.dt[,2][d.dt[,2] <= 1e-4]=1e-4
+    #       d.dt[,2][d.dt[,2] >= 1 - 1e-4]= 1 - 1e-4
+    #       error<- try( d.betareg <- betareg(fcn, data = d.dt) )
+    #       if(class(error)!="try-error"){
+    #         dt.truncated <- rbind(dt.truncated, d.dt)
+    #       } else {
+    #         d.dt[,2][d.dt[,2] <= 1e-3]=1e-3
+    #         d.dt[,2][d.dt[,2] >= 1 - 1e-3]= 1 - 1e-3
+    #         error<- try( d.betareg <- betareg(fcn, data = d.dt) )
+    #         if(class(error)!="try-error"){
+    #           dt.truncated <- rbind(dt.truncated, d.dt)
+    #         } else {
+    #           n = nrow(d.dt)
+    #           d.dt[,2] = (d.dt[,2]*(n-1)+0.5)/n
+    #           dt.truncated <- rbind(dt.truncated, d.dt)
+    #         }
+    #       }
+    #     }
+    #   }
+    # }
+    # dt.truncated
+    dt()
   })
   
   # Output warning message
@@ -374,8 +377,9 @@ server <- function(input, output) {
         Z <- matrix(c(rep(1,nrow(d.dt))),ncol=1,byrow=F) 
       }
       
-      d.betareg <- MDPDE_BETA(y=y, X=X, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.5, spac=0.02, method="BFGS", startV="CP",
-                              linkmu="logit", linkphi="identity", weights=FALSE)
+      # d.betareg <- MDPDE_BETA(y=y, X=X, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.5, spac=0.02, method="BFGS", startV="CP",
+      #                         linkmu="logit", linkphi="identity", weights=FALSE)
+      d.betareg <- MDPDE_BETA2(y=y, X=X, Z=Z)
       
       beta.fit[[i]] = d.betareg
     }
@@ -979,8 +983,9 @@ server <- function(input, output) {
     if (input$checkbox_betareg == TRUE){
       X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
       Z <- matrix(c(rep(1,nrow(dt.dummy)), log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the precision submodel
-      model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
       df0 <- ncol(X0)+ncol(Z)
       
       # Multiple intercepts and multiple slopes
@@ -988,23 +993,26 @@ server <- function(input, output) {
                             dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
                             log(dt.dummy[,1]),interactpart))
       
-      model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
       df1 <- ncol(X1)+ncol(Z)
       
       # Multiple intercepts and one slope
       X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
                             dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
                             log(dt.dummy[,1])))
-      model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
       df2 <- ncol(X2)+ncol(Z)
       
     } else {
       X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
       Z <- matrix(c(rep(1,nrow(dt.dummy))),ncol=1,byrow=F)  #regressor matrix for the precision submodel
-      model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
       df0 <- ncol(X0)+ncol(Z)
       
       # Multiple intercepts and multiple slopes
@@ -1012,16 +1020,18 @@ server <- function(input, output) {
                             dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
                             log(dt.dummy[,1]),interactpart))
       
-      model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
       df1 <- ncol(X1)+ncol(Z)
       
       # Multiple intercepts and one slope
       X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
                             dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
                             log(dt.dummy[,1])))
-      model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-                           linkmu="logit", linkphi="identity", weights=FALSE)
+      # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+      #                      linkmu="logit", linkphi="identity", weights=FALSE)
+      model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
       df2 <- ncol(X2)+ncol(Z)
     }
     
@@ -1030,8 +1040,9 @@ server <- function(input, output) {
     
     compare01 = 1 - pchisq(2*model1$log_lik - 2*model0$log_lik, df1-df0)
     compare12 = 1 - pchisq(2*model1$log_lik - 2*model2$log_lik, df1-df2)
+    compare01 = ifelse(compare01<0.0001, "<.0001",round(compare01,4))
+    compare12 = ifelse(compare12<0.0001, "<.0001",round(compare12,4))
     compare.pval = c(compare01,compare12)
-    compare.pval = ifelse(compare.pval<0.0001, "<.0001",round(compare.pval,4))
     compare.pval
   })
   
