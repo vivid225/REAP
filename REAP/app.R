@@ -52,14 +52,16 @@ pairwise_compare <- function(m, sd, n){
   return(anova.table)
 }
 
-displaytable = data.frame(
-  "Concentration" = c(0.11, 0.5, 1.0, 2.0, 4.0, 0.1, 0.5, 1.0, 2.0, 0.2, 1.0, 2.0, 4.0),
-  "Effect" = c(0.6701, 0.6289, 0.5577, 0.4550, 0.3755, 0.7666, 0.5833, 0.5706, 0.4934, 
-               0.6539, 0.4919, 0.3551, 0.2341),
-  "Agent" = c("SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  
-              "4-HPR",  "4-HPR",  "4-HPR",  "4-HPR",  
-              "Combination", "Combination", "Combination", "Combination")
-)
+# displaytable = data.frame(
+#   "Concentration" = c(0.11, 0.5, 1.0, 2.0, 4.0, 0.1, 0.5, 1.0, 2.0, 0.2, 1.0, 2.0, 4.0),
+#   "Growth" = c(0.6701, 0.6289, 0.5577, 0.4550, 0.3755, 0.7666, 0.5833, 0.5706, 0.4934, 
+#                0.6539, 0.4919, 0.3551, 0.2341),
+#   "Agent" = c("SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  
+#               "4-HPR",  "4-HPR",  "4-HPR",  "4-HPR",  
+#               "Combination", "Combination", "Combination", "Combination")
+# )
+
+displaytable = read.table("31780660_F1B_exampledata.csv", sep = ",", header = TRUE)
 
 source("MDPDE2.R", local = TRUE)
 
@@ -211,8 +213,8 @@ ui <- pageWithSidebar(
                                themselves. Otherwise, REAP will automatically truncate the values exceeding 
                                the boundaries to (0,1) using a truncation algorithm"),
                          p("Below is an example dataset illustrating the format of the input dataset"),
-                         tags$a(href='sampledata.csv', 
-                                target='blank', 'Sample Data', download = 'sampledata.csv'),
+                         tags$a(href='31780660_F1B_exampledata.csv', 
+                                target='blank', 'Sample Data', download = '31780660_F1B_exampledata.csv'),
                          tableOutput("table1"),
                          
                          h4("Output"),
@@ -739,7 +741,7 @@ server <- function(input, output) {
       if (is.na(input$effectpct)==FALSE){
         drplots$plottotal = ggplot() +
           geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
-          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
           labs(color=nms[3], shape=nms[3]) +
           geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)+
           scale_color_prism("colors") + 
@@ -755,7 +757,7 @@ server <- function(input, output) {
     } else {
       drplots$plottotal = ggplot() +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
         scale_x_continuous(trans = 'log10') + 
         labs(color=nms[3], shape=nms[3]) +
         scale_color_prism("colors") + 
@@ -784,7 +786,8 @@ server <- function(input, output) {
       if (is.na(input$effectpct)==FALSE){
         drplots$plottotal = ggplot() +
           geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
-          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+          # xlab(expression(paste("Assay Concentration"," (",mu,"M)",sep=""))) + ylab(paste("Cell viability","(in %)")) +
           scale_x_continuous(trans = 'log10') + 
           labs(color=nms[3], shape=nms[3]) +
           geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2) +
