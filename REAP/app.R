@@ -52,16 +52,8 @@ pairwise_compare <- function(m, sd, n){
   return(anova.table)
 }
 
-# displaytable = data.frame(
-#   "Concentration" = c(0.11, 0.5, 1.0, 2.0, 4.0, 0.1, 0.5, 1.0, 2.0, 0.2, 1.0, 2.0, 4.0),
-#   "Growth" = c(0.6701, 0.6289, 0.5577, 0.4550, 0.3755, 0.7666, 0.5833, 0.5706, 0.4934, 
-#                0.6539, 0.4919, 0.3551, 0.2341),
-#   "Agent" = c("SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  "SCH66336",  
-#               "4-HPR",  "4-HPR",  "4-HPR",  "4-HPR",  
-#               "Combination", "Combination", "Combination", "Combination")
-# )
-
-displaytable = read.table("31780660_F1B_exampledata.csv", sep = ",", header = TRUE)
+displaytable = read.table("31780660_F1B_exampledata.csv", sep = ",", header = TRUE, check.names = FALSE)
+displaytable = head(displaytable)
 
 source("MDPDE2.R", local = TRUE)
 
@@ -346,7 +338,7 @@ server <- function(input, output) {
   
   output$table1 <- renderTable({
     return(displaytable)
-  })
+  }, digits = 3)
   
   # CI width
   observe({
@@ -492,6 +484,10 @@ server <- function(input, output) {
     shapenum = 4
     sizenum=10* (input$num_width+0.2)
     linesize = 1
+    xlabel = nms[1]
+    xlabel = gsub("."," ", xlabel,fixed=TRUE)
+    ylabel = nms[2]
+    ylabel = gsub("."," ", ylabel,fixed=TRUE)
     ## plotci_scale -----
     if(any(is.na(dt.ci$LCL_l)==FALSE) & any(is.na(dt.ci$UCL_l)==FALSE)){ # both ucl and lcl have out-of-limit values
       plotci_scale = ggplot() +
@@ -499,7 +495,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         # ylim(-0.05,1) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
@@ -516,7 +512,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), size=linesize) +
@@ -528,7 +524,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]]), size=linesize) +
@@ -540,7 +536,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10')  
     }
     
@@ -551,7 +547,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
@@ -568,7 +564,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+        xlab(nms[1]) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), size=linesize) +
@@ -581,7 +577,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]]), size=linesize) +
@@ -594,7 +590,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10')  +
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
     }
@@ -606,7 +602,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]),size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         # ylim(-0.05,1)+
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
@@ -624,7 +620,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
@@ -637,7 +633,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
@@ -650,7 +646,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + coord_cartesian(ylim=c(-0.05, 1)) +
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + coord_cartesian(ylim=c(-0.05, 1)) +
         labs(color=nms[3], shape=nms[3]) +
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
@@ -664,7 +660,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
@@ -679,7 +675,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
@@ -691,7 +687,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
         geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
@@ -703,7 +699,7 @@ server <- function(input, output) {
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
                           color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) 
       
     }
@@ -714,7 +710,7 @@ server <- function(input, output) {
     if (input$checkbox1 == TRUE){
       drplots$plottotal = ggplot() +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) + 
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) +
         scale_color_prism("colors") + 
         scale_fill_prism("colors") + 
@@ -741,7 +737,7 @@ server <- function(input, output) {
       if (is.na(input$effectpct)==FALSE){
         drplots$plottotal = ggplot() +
           geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
-          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+          xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
           labs(color=nms[3], shape=nms[3]) +
           geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)+
           scale_color_prism("colors") + 
@@ -757,7 +753,7 @@ server <- function(input, output) {
     } else {
       drplots$plottotal = ggplot() +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
-        xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+        xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         scale_x_continuous(trans = 'log10') + 
         labs(color=nms[3], shape=nms[3]) +
         scale_color_prism("colors") + 
@@ -786,7 +782,7 @@ server <- function(input, output) {
       if (is.na(input$effectpct)==FALSE){
         drplots$plottotal = ggplot() +
           geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
-          xlab(nms[1]) + ylab(paste(nms[2],"(in %)")) +
+          xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
           # xlab(expression(paste("Assay Concentration"," (",mu,"M)",sep=""))) + ylab(paste("Cell viability","(in %)")) +
           scale_x_continuous(trans = 'log10') + 
           labs(color=nms[3], shape=nms[3]) +
@@ -954,14 +950,15 @@ server <- function(input, output) {
     
     
     model <- data.frame(Model = dt.ic50$model,
+                        Intercept = round(dt.ic50$beta.intercept,3),
                         Slope = round(dt.ic50$beta.slope,3),
                         Slope.Std.Err = round(dt.ic50$beta.slope.se,3),
                         Slope.Pvalue = dt.ic50$beta.slope.pval,
                         Slope.z.Pvalue = dt.ic50$beta.slope.z.pval,
                         IC10 = round(dt.ic50$ic10,3),
                         IC10.Std.Err = round(dt.ic50$se10,3),
-                        IC10.Pvalue = ic10.pwise.pval,
-                        Intercept = round(dt.ic50$beta.intercept,3))
+                        IC10.Pvalue = ic10.pwise.pval
+                        )
     rownames(model) = NULL
     sum.res = c()
     sum.res$model <- model
@@ -1162,7 +1159,13 @@ server <- function(input, output) {
   output$dtable <- downloadHandler(
     filename = function() {"Dose-response curves results.csv"},
     content = function(file) {
-      write.csv(model.dt()$model, file, row.names = FALSE)
+      output = model.dt()$model
+      output = output[,-5]
+      colnames(output) <- c("Model","Intercept","Slope (m)","Std. Err for m",
+                            "P-value for m>1",
+                            "Effect estimation","Std. Err for effect estimation",
+                            "P-value for effect estimation")
+      write.csv(output, file, row.names = FALSE)
     }
   )
   output$drplot <- downloadHandler(
