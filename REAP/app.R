@@ -1164,7 +1164,7 @@ server <- function(input, output) {
       colnames(output) <- c("Model","Intercept","Slope (m)","Std. Err for m",
                             "P-value for m>1",
                             "Effect estimation","Std. Err for effect estimation",
-                            "P-value for effect estimation")
+                            "Pairwise comparison")
       write.csv(output, file, row.names = FALSE)
     }
   )
