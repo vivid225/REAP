@@ -129,7 +129,16 @@ ui <- pageWithSidebar(
                                    value = FALSE),
                      useShinyjs(),
                      shinyjs::hidden(
-                       numericInput(inputId = "num_width", "Width of CI", value = 0.02, min = 0, max = 1)
+                       # numericInput(inputId = "num_width", "Width of CI", value = 0.02, min = 0, max = 0.1)
+                       numericInput(inputId = "num_width",
+                                    tags$span("Width of CI",
+                                              tags$i(
+                                                id = "num_width1",
+                                                class = "glyphicon glyphicon-info-sign",
+                                                style = "color:#0072B2; ",
+                                                title = "Input width of CI, from 0 to 0.1"
+                                              )),
+                                    value=0.02, min=0, max=0.1)
                      ),
                      
                      
@@ -168,6 +177,8 @@ ui <- pageWithSidebar(
     bsTooltip("icon", "Specify width and height of the downloaded plot", placement = "top", trigger = "hover",
               options = NULL),
     bsTooltip("effectpct", "Input percentage of effect, from 0 to 100", placement = "top", trigger = "hover",
+              options = NULL),
+    bsTooltip("num_width1", "Input width of CI, from 0 to 0.1", placement = "top", trigger = "hover",
               options = NULL)
     
     
@@ -223,7 +234,8 @@ ui <- pageWithSidebar(
                          estimation tables are downloadable on REAP to plug in presentations and 
                          manuscripts for result dissemination."),
                          
-                         h4("Reference", id= "ref")
+                         h4("Reference", id= "ref"),
+                         p("Zhou, S*, Liu, X*, Fang, X*, Chinchilli, VM, Wang, M, Wang, HG, Dokholyan, NV, Shen, C, Lee, JJ. (2021) Robust and Efficient Assessment of Potency (REAP): A Quantitative Tool for Dose-response Curve Estimation. doi:10.1101/2021.11.20.469388")
                 ),
                 tabPanel("Dataset", value = 2, 
                          fluidRow(
@@ -348,6 +360,7 @@ server <- function(input, output) {
       shinyjs::hide(id = "num_width")
     }
   })
+  
   
   drplots <- reactiveValues()
   
@@ -936,19 +949,23 @@ server <- function(input, output) {
     )
     dt.ic50 <- dt.ic50[order(ic10),]
     ic10.pwise.pval <- c()
-    for (i in 1:(nrow(dt.ic50)-1)){
-      dt <- dt.ic50[c(i,i+1),]
-      # ic10.pwise.anova <- ind.oneway.second(dt[,"ic10"],dt[,"sd10"],dt[,"n10"])
-      ic10.pwise.anova <- pairwise_compare(m=dt[,"ic10"],sd=dt[,"sd10"],n=dt[,"n10"])
-      pval <- pf(ic10.pwise.anova$F[1], 
-                 ic10.pwise.anova$df[1], 
-                 ic10.pwise.anova$df[2], lower.tail = FALSE)
-      ic10.pwise.pval = c(ic10.pwise.pval, pval)
+    
+    if (nrow(dt.ic50)==1) {
+      ic10.pwise.pval = "-"
+    } else {
+      for (i in 1:(nrow(dt.ic50)-1)){
+        dt <- dt.ic50[c(i,i+1),]
+        # ic10.pwise.anova <- ind.oneway.second(dt[,"ic10"],dt[,"sd10"],dt[,"n10"])
+        ic10.pwise.anova <- pairwise_compare(m=dt[,"ic10"],sd=dt[,"sd10"],n=dt[,"n10"])
+        pval <- pf(ic10.pwise.anova$F[1], 
+                   ic10.pwise.anova$df[1], 
+                   ic10.pwise.anova$df[2], lower.tail = FALSE)
+        ic10.pwise.pval = c(ic10.pwise.pval, pval)
+      }
+      ic10.pwise.pval <- ifelse(ic10.pwise.pval<0.0001, "<0.0001", round(ic10.pwise.pval,4))
+      ic10.pwise.pval = c("-", ic10.pwise.pval)
     }
-    ic10.pwise.pval <- ifelse(ic10.pwise.pval<0.0001, "<0.0001", round(ic10.pwise.pval,4))
-    ic10.pwise.pval = c("-", ic10.pwise.pval)
-    
-    
+  
     model <- data.frame(Model = dt.ic50$model,
                         Intercept = round(dt.ic50$beta.intercept,3),
                         Slope = round(dt.ic50$beta.slope,3),
@@ -971,78 +988,84 @@ server <- function(input, output) {
   compare.pval <- reactive({
     nms <- colnames(dt.truncated())
     dt.dummy <- dummy_cols(dt.truncated(), select_columns = nms[3])
-    colnames(dt.dummy)[4:ncol(dt.dummy)] <- paste("dummy",1:length(unique(dt.truncated()[,3])),sep="")
-    colnms <- colnames(dt.dummy)
     
-    interactpart <- dt.dummy[,4:(ncol(dt.dummy)-1)]*log(dt.dummy[,1])
-    colnames(interactpart) <- paste("drug_dummy",1:(length(unique(dt.truncated()[,3]))-1),sep="")
-    dt.dummy <- cbind(dt.dummy, interactpart)
-    
-    y <- dt.dummy[,2] # response value
-    
-    if (input$checkbox_betareg == TRUE){
-      X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
-      Z <- matrix(c(rep(1,nrow(dt.dummy)), log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the precision submodel
-      # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
-      df0 <- ncol(X0)+ncol(Z)
-      
-      # Multiple intercepts and multiple slopes
-      X1 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
-                            dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
-                            log(dt.dummy[,1]),interactpart))
-      
-      # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
-      df1 <- ncol(X1)+ncol(Z)
-      
-      # Multiple intercepts and one slope
-      X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
-                            dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
-                            log(dt.dummy[,1])))
-      # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
-      df2 <- ncol(X2)+ncol(Z)
-      
+    if (length(unique(dt.truncated()[,3])) == 1){
+      compare.pval = 0
     } else {
-      X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
-      Z <- matrix(c(rep(1,nrow(dt.dummy))),ncol=1,byrow=F)  #regressor matrix for the precision submodel
-      # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
-      df0 <- ncol(X0)+ncol(Z)
+      colnames(dt.dummy)[4:ncol(dt.dummy)] <- paste("dummy",1:length(unique(dt.truncated()[,3])),sep="")
+      colnms <- colnames(dt.dummy)
       
-      # Multiple intercepts and multiple slopes
-      X1 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
-                            dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
-                            log(dt.dummy[,1]),interactpart))
+      interactpart <- dt.dummy[,4:(ncol(dt.dummy)-1)]*log(dt.dummy[,1])
+      colnames(interactpart) <- paste("drug_dummy",1:(length(unique(dt.truncated()[,3]))-1),sep="")
+      dt.dummy <- cbind(dt.dummy, interactpart)
       
-      # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
-      df1 <- ncol(X1)+ncol(Z)
+      y <- dt.dummy[,2] # response value
       
-      # Multiple intercepts and one slope
-      X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
-                            dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
-                            log(dt.dummy[,1])))
-      # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
-      #                      linkmu="logit", linkphi="identity", weights=FALSE)
-      model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
-      df2 <- ncol(X2)+ncol(Z)
+      if (input$checkbox_betareg == TRUE){
+        X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
+        Z <- matrix(c(rep(1,nrow(dt.dummy)), log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the precision submodel
+        # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
+        df0 <- ncol(X0)+ncol(Z)
+        
+        # Multiple intercepts and multiple slopes
+        X1 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
+                              dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
+                              log(dt.dummy[,1]),interactpart))
+        
+        # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
+        df1 <- ncol(X1)+ncol(Z)
+        
+        # Multiple intercepts and one slope
+        X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
+                              dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
+                              log(dt.dummy[,1])))
+        # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
+        df2 <- ncol(X2)+ncol(Z)
+        
+      } else {
+        X0 <- matrix(c(rep(1,nrow(dt.dummy)),log(dt.dummy[,1])),ncol=2,byrow=F) #regressor matrix for the mean submodel
+        Z <- matrix(c(rep(1,nrow(dt.dummy))),ncol=1,byrow=F)  #regressor matrix for the precision submodel
+        # model0 <- MDPDE_BETA(y=y, X=X0, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model0 <- MDPDE_BETA2(y=y, X=X0, Z=Z)
+        df0 <- ncol(X0)+ncol(Z)
+        
+        # Multiple intercepts and multiple slopes
+        X1 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
+                              dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
+                              log(dt.dummy[,1]),interactpart))
+        
+        # model1 <- MDPDE_BETA(y=y, X=X1, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model1 <- MDPDE_BETA2(y=y, X=X1, Z=Z)
+        df1 <- ncol(X1)+ncol(Z)
+        
+        # Multiple intercepts and one slope
+        X2 <- as.matrix(cbind(rep(1,nrow(dt.dummy)),
+                              dt.dummy[,4:(4+length(unique(dt.truncated()[,3]))-2)],
+                              log(dt.dummy[,1])))
+        # model2 <- MDPDE_BETA(y=y, X=X2, Z=Z, qoptimal=TRUE, q0=0.5, m=3, L=0.02, qmin=0.2, spac=0.02, method="BFGS", startV="CP",
+        #                      linkmu="logit", linkphi="identity", weights=FALSE)
+        model2 <- MDPDE_BETA2(y=y, X=X2, Z=Z)
+        df2 <- ncol(X2)+ncol(Z)
+      }
+      
+      # betaregmodel <- betareg(value ~ dummy1+dummy2+dummy3+dummy4+dummy5+dummy6+
+      #                           dummy7+log(Auranofin), data=dt.dummy)
+      
+      compare01 = 1 - pchisq(2*model1$log_lik - 2*model0$log_lik, df1-df0)
+      compare12 = 1 - pchisq(2*model1$log_lik - 2*model2$log_lik, df1-df2)
+      compare01 = ifelse(compare01<0.0001, "<.0001",round(compare01,4))
+      compare12 = ifelse(compare12<0.0001, "<.0001",round(compare12,4))
+      compare.pval = c(compare01,compare12)
     }
     
-    # betaregmodel <- betareg(value ~ dummy1+dummy2+dummy3+dummy4+dummy5+dummy6+
-    #                           dummy7+log(Auranofin), data=dt.dummy)
-    
-    compare01 = 1 - pchisq(2*model1$log_lik - 2*model0$log_lik, df1-df0)
-    compare12 = 1 - pchisq(2*model1$log_lik - 2*model2$log_lik, df1-df2)
-    compare01 = ifelse(compare01<0.0001, "<.0001",round(compare01,4))
-    compare12 = ifelse(compare12<0.0001, "<.0001",round(compare12,4))
-    compare.pval = c(compare01,compare12)
     compare.pval
   })
   
@@ -1076,23 +1099,45 @@ server <- function(input, output) {
   
   # Model comparison -----
   output$modelcomparison <- renderText({
-    comp_models <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+    
+    if (compare.pval()==0){
+      comp_models <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+                                         "P-value"),
+                                col2 = c("Fitted models same for all the agents",
+                                         "At least one fitted model is different from other agents",
+                                         "Only one model in the dataset. No comparison is conducted."))
+      
+      comp_ic50 <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
                                        "P-value"),
-                              col2 = c("Fitted models same for all the agents",
-                                       "At least one fitted model is different from other agents",
-                                       compare.pval()[1]))
+                              col2 = c("Effect estimation same for all the agents",
+                                       "At least one effect estimation is different from other agents",
+                                       "Only one model in the dataset. No comparison is conducted."))
+      
+      comp_slope <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+                                        "P-value"),
+                               col2 = c("Slope estimation same for all the agents",
+                                        "At lease one slope estimation is different from other agents",
+                                        "Only one model in the dataset. No comparison is conducted."))
+    } else {
+      comp_models <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+                                         "P-value"),
+                                col2 = c("Fitted models same for all the agents",
+                                         "At least one fitted model is different from other agents",
+                                         compare.pval()[1]))
+      
+      comp_ic50 <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+                                       "P-value"),
+                              col2 = c("Effect estimation same for all the agents",
+                                       "At least one effect estimation is different from other agents",
+                                       model.dt()$ic10.anova.pval))
+      
+      comp_slope <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
+                                        "P-value"),
+                               col2 = c("Slope estimation same for all the agents",
+                                        "At lease one slope estimation is different from other agents",
+                                        compare.pval()[2]))
+    }
     
-    comp_ic50 <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
-                                     "P-value"),
-                            col2 = c("Effect estimation same for all the agents",
-                                     "At least one effect estimation is different from other agents",
-                                     model.dt()$ic10.anova.pval))
-    
-    comp_slope <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
-                                      "P-value"),
-                             col2 = c("Slope estimation same for all the agents",
-                                      "At lease one slope estimation is different from other agents",
-                                      compare.pval()[2]))
     
     comp=NULL
     if (input$checkbox4 == TRUE){
