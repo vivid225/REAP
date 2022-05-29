@@ -113,19 +113,35 @@ ui <- pageWithSidebar(
                                             )), 
                                   value=50, min=0, max=100),
                      hr(),
+                     # h3("Model Comparisons"),
+                     tags$h3(
+                       tags$span(
+                         "Model Comparisons",
+                         tags$i(
+                           id = "modelcompare",
+                           class = "glyphicon glyphicon-info-sign",
+                           style = "color:#0072B2; ",
+                           title = "for effect estimations or slope comparison if only one box was checked, or the curve comparison if both boxes were checked."  
+                         )
+                       )
+                     ),
+                     
+                     checkboxInput("checkbox4",
+                                   label = tags$span("Effect estimations"),
+                                   value = FALSE),
+                     checkboxInput("checkbox5",
+                                   label = tags$span("Slopes"),
+                                   value = FALSE),
+                     
+                     
+                     hr(),
                      h3("Plot Specifics"),
                      checkboxInput("checkbox1", 
                                    label = tags$span("Remove log-transformation of x-axis"),
                                    value = FALSE),
-                     # checkboxInput("checkbox3", 
-                     #               label = tags$span("Add median effect estimation"),
-                     #               value = FALSE),
-                     # checkboxInput("checkbox_ic10",
-                     #               label = tags$span("Add EC10 estimation"),
-                     #               value = FALSE),
                      
                      checkboxInput("checkbox2", 
-                                   label = tags$span("Add mean and confidence interval for observations"),
+                                   label = tags$span("Add sample mean and sample S.D."),
                                    value = FALSE),
                      useShinyjs(),
                      shinyjs::hidden(
@@ -139,22 +155,14 @@ ui <- pageWithSidebar(
                                                 title = "Input width of CI, from 0 to 0.1"
                                               )),
                                     value=0.02, min=0, max=0.1)
+                       
                      ),
                      
-                     
-                     hr(),
-                     h3("Model Comparisons"),
-                     
-                     checkboxInput("checkbox4",
-                                   label = tags$span("Effect estimations"),
-                                   value = FALSE),
-                     checkboxInput("checkbox5",
-                                   label = tags$span("Slopes"),
-                                   value = FALSE),
+                     span(textOutput("CIinput"), style="color:red"),
                      
                      hr(),
                      # h4("Downloaded Plot"),
-                     tags$h4(
+                     tags$h3(
                        tags$span(
                          # tags$h4("Download Plot"),
                          "Download Plot",
@@ -179,6 +187,8 @@ ui <- pageWithSidebar(
     bsTooltip("effectpct", "Input percentage of effect, from 0 to 100", placement = "top", trigger = "hover",
               options = NULL),
     bsTooltip("num_width1", "Input width of CI, from 0 to 0.1", placement = "top", trigger = "hover",
+              options = NULL),
+    bsTooltip("modelcompare", "for effect estimations or slope comparison if only one box was checked, or the curve comparison if both boxes were checked.", placement = "top", trigger = "hover",
               options = NULL)
     
     
@@ -276,49 +286,11 @@ server <- function(input, output) {
   
   # Truncation on dataset -----
   dt.truncated <- reactive({
-    # nms <- colnames(dt())
-    # 
-    # n = length(unique(dt()[,3]))
-    # 
-    # dt.truncated = NULL
-    # for (i in 1:n){
-    #   d.dt <- subset(dt(), dt()[,3] == as.character(unique(dt()[,3]))[i])
-    #   nms.dt <- colnames(d.dt)
-    #   fcn <- as.formula(paste(nms.dt[2], "~log(",nms.dt[1],")"))
-    #   d.dt[,2][d.dt[,2] <= 1e-6]=1e-6
-    #   d.dt[,2][d.dt[,2] >= 1 - 1e-6]= 1 - 1e-6
-    #   error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-    #   if(class(error)!="try-error"){
-    #     dt.truncated <- rbind(dt.truncated, d.dt)
-    #   } else {
-    #     d.dt[,2][d.dt[,2] <= 1e-5]=1e-5
-    #     d.dt[,2][d.dt[,2] >= 1 - 1e-5]= 1 - 1e-5
-    #     error<- try( d.betareg <- betareg(fcn, data = d.dt))
-    #     if(class(error)!="try-error"){
-    #       dt.truncated <- rbind(dt.truncated, d.dt)
-    #     } else {
-    #       d.dt[,2][d.dt[,2] <= 1e-4]=1e-4
-    #       d.dt[,2][d.dt[,2] >= 1 - 1e-4]= 1 - 1e-4
-    #       error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-    #       if(class(error)!="try-error"){
-    #         dt.truncated <- rbind(dt.truncated, d.dt)
-    #       } else {
-    #         d.dt[,2][d.dt[,2] <= 1e-3]=1e-3
-    #         d.dt[,2][d.dt[,2] >= 1 - 1e-3]= 1 - 1e-3
-    #         error<- try( d.betareg <- betareg(fcn, data = d.dt) )
-    #         if(class(error)!="try-error"){
-    #           dt.truncated <- rbind(dt.truncated, d.dt)
-    #         } else {
-    #           n = nrow(d.dt)
-    #           d.dt[,2] = (d.dt[,2]*(n-1)+0.5)/n
-    #           dt.truncated <- rbind(dt.truncated, d.dt)
-    #         }
-    #       }
-    #     }
-    #   }
-    # }
-    # dt.truncated
-    dt()
+    truncated <- 1e-9
+    df <- dt()
+    df[,2][df[,2] <= truncated] = truncated
+    df[,2][df[,2] >= 1-truncated] = 1-truncated
+    df
   })
   
   # Output warning message
@@ -358,6 +330,15 @@ server <- function(input, output) {
       shinyjs::show(id = "num_width")
     } else {
       shinyjs::hide(id = "num_width")
+    }
+  })
+  
+  # CI width input warning
+  output$CIinput <- renderText({
+    if (input$num_width > 0.1 | input$num_width < 0){
+      "Input width of CI should be within (0, 0.1)."
+    } else {
+      NULL
     }
   })
   
@@ -439,8 +420,8 @@ server <- function(input, output) {
     
     dt.ci <- summarySE(dt.truncated(), measurevar=nms[2], groupvars=c(nms[1],nms[3]))
     
-    dt.ci$LCL = dt.ci[,nms[2]]-dt.ci$ci
-    dt.ci$UCL = dt.ci[,nms[2]]+dt.ci$ci
+    dt.ci$LCL = dt.ci[,nms[2]]-dt.ci$sd
+    dt.ci$UCL = dt.ci[,nms[2]]+dt.ci$sd
     dt.ci$UCL_l = ifelse(dt.ci$UCL > 1, 1 , NA)
     dt.ci$LCL_l = ifelse(dt.ci$LCL < 0, 0 , NA)
     UCL_index = which(dt.ci$UCL > 1)
@@ -493,6 +474,9 @@ server <- function(input, output) {
     }
     
     
+    ciwidth = input$num_width
+    if (input$num_width > 0.01){ ciwidth = 0.01 }
+    if (input$num_width < 0){  ciwidth = 0 } 
     
     shapenum = 4
     sizenum=10* (input$num_width+0.2)
@@ -1100,24 +1084,24 @@ server <- function(input, output) {
   # Model comparison -----
   output$modelcomparison <- renderText({
     
-    if (compare.pval()==0){
+    if (length(compare.pval())==1){
       comp_models <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
                                          "P-value"),
                                 col2 = c("Fitted models same for all the agents",
                                          "At least one fitted model is different from other agents",
-                                         "Only one model in the dataset. No comparison is conducted."))
+                                         "Only one model for the dataset. No comparison is conducted."))
       
       comp_ic50 <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
                                        "P-value"),
                               col2 = c("Effect estimation same for all the agents",
                                        "At least one effect estimation is different from other agents",
-                                       "Only one model in the dataset. No comparison is conducted."))
+                                       "Only one model for the dataset. No comparison is conducted."))
       
       comp_slope <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
                                         "P-value"),
                                col2 = c("Slope estimation same for all the agents",
                                         "At lease one slope estimation is different from other agents",
-                                        "Only one model in the dataset. No comparison is conducted."))
+                                        "Only one model for the dataset. No comparison is conducted."))
     } else {
       comp_models <- data.frame(col1 = c("Null hypothesis", "Alternative hypothesis",
                                          "P-value"),
