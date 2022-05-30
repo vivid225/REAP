@@ -109,7 +109,7 @@ ui <- pageWithSidebar(
                                               id = "effectpct",
                                               class = "glyphicon glyphicon-info-sign",
                                               style = "color:#0072B2; ",
-                                              title = "Input percentage of effect, from 0 to 100"  
+                                              title = "Input percentage of effect, from 0 to 100; Effect estimates are shown with triangles in the dose-response curve plot"  
                                             )), 
                                   value=50, min=0, max=100),
                      hr(),
@@ -184,7 +184,7 @@ ui <- pageWithSidebar(
     # add hover message
     bsTooltip("icon", "Specify width and height of the downloaded plot", placement = "top", trigger = "hover",
               options = NULL),
-    bsTooltip("effectpct", "Input percentage of effect, from 0 to 100", placement = "top", trigger = "hover",
+    bsTooltip("effectpct", "Input percentage of effect, from 0 to 100; Effect estimates are shown triangles in the dose-response curve plot", placement = "top", trigger = "hover",
               options = NULL),
     bsTooltip("num_width1", "Input width of CI, from 0 to 0.1", placement = "top", trigger = "hover",
               options = NULL),
@@ -475,11 +475,10 @@ server <- function(input, output) {
     
     
     ciwidth = input$num_width
-    if (input$num_width > 0.01){ ciwidth = 0.01 }
-    if (input$num_width < 0){  ciwidth = 0 } 
+    if (input$num_width > 0.01 | input$num_width < 0){ ciwidth = 0.01 }
     
     shapenum = 4
-    sizenum=10* (input$num_width+0.2)
+    sizenum=10* (ciwidth+0.2)
     linesize = 1
     xlabel = nms[1]
     xlabel = gsub("."," ", xlabel,fixed=TRUE)
@@ -491,16 +490,16 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         # ylim(-0.05,1) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+ 
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+ 
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
       
       
     } else if (any(is.na(dt.ci$LCL_l)==FALSE)){
@@ -508,31 +507,31 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
       
     } else if (any(is.na(dt.ci$UCL_l)==FALSE)){
       plotci_scale = ggplot() +
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
       
     } else { # neither of them have out-of-limit values
       plotci_scale = ggplot() +
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10')  
     }
@@ -543,15 +542,15 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+ 
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+ 
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2) 
       
       
@@ -560,12 +559,12 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum,stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(nms[1]) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
     } else if (any(is.na(dt.ci$UCL_l)==FALSE)){
@@ -573,12 +572,12 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10') + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
     } else { # neither of them have out-of-limit values
@@ -586,7 +585,7 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred[,1], y = dt.pred[,2], color=dt.pred[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + scale_x_continuous(trans = 'log10')  +
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
@@ -598,16 +597,16 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]),size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         # ylim(-0.05,1)+
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+ 
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+ 
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
       
@@ -616,12 +615,12 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
     } else if (any(is.na(dt.ci$UCL_l)==FALSE)){
@@ -629,12 +628,12 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) +
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
       
     } else { # neither of them have out-of-limit values
@@ -642,7 +641,7 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + coord_cartesian(ylim=c(-0.05, 1)) +
         labs(color=nms[3], shape=nms[3]) +
         geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=2)
@@ -656,46 +655,46 @@ server <- function(input, output) {
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)+ 
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)+ 
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
       
     } else if (any(is.na(dt.ci$LCL_l)==FALSE)){
       plotci = ggplot() +
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][LCL_index],ymin = dt.ci[,nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,nms[3]][LCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize)
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
       
     } else if (any(is.na(dt.ci$UCL_l)==FALSE)){
       plotci = ggplot() +
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) + 
-        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=input$num_width, size=linesize) + 
+        geom_errorbar(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,nms[3]][UCL_index]), width=ciwidth, size=linesize) + 
         geom_linerange(aes(x = dt.ci[,nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,nms[2]][UCL_index],color=dt.ci[,nms[3]][UCL_index]), size=linesize) +
-        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(input$num_width+0.2, "cm")), size=linesize) 
+        geom_segment(aes(x = dt.ci[,nms[1]], xend = dt.ci[,nms[1]], y = dt.ci[,nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize) 
       
     } else { # neither of them have out-of-limit values
       plotci = ggplot() +
         geom_point(aes(x=dt.ci[,nms[1]], y=dt.ci[,nms[2]], color=dt.ci[,nms[3]]),shape=shapenum,size=sizenum, stroke=linesize) +
         geom_line(aes(x = dt.pred1[,1], y = dt.pred1[,2], color=dt.pred1[,3]), size=linesize) +
         geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, 
-                          color=dt.ci[,nms[3]]), width=input$num_width, size=linesize) + 
+                          color=dt.ci[,nms[3]]), width=ciwidth, size=linesize) + 
         xlab(xlabel) + ylab(paste(ylabel,"(in %)")) + 
         labs(color=nms[3], shape=nms[3]) 
       
@@ -1174,7 +1173,8 @@ server <- function(input, output) {
       footnote(
         number = c("m > 1: p-value based on one-sided t-test for hypothesis testing on hill coefficient > 1", 
                    "Pairwise comparison: p-value based on ANOVA test (Cohen, 2000). Concentrations that give specified effect (default at 50%) by group were sorted from low to high. Hypothesis testings on equal potency (i.e., concentration for ED50/IC50 by default) were conducted pairwise with the group right above (one rank lower).",
-                   "95% confidence intervals can be approximated by Estimate +/- 1.96*Std.Err.")
+                   "95% confidence intervals can be approximated by Estimate +/- t-value(0.975, df=n-1)*Std.Err.",
+                   "Effect estimate is indicated by triangles in the dose-response curve plot.")
         # alphabet = c("Footnote A; ", "Footnote B; "),
         # symbol = c("Footnote Symbol 1; ", "Footnote Symbol 2"),
         # number_title = "Type I: ",
