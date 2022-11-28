@@ -206,9 +206,9 @@ shinyUI(fluidPage(
                              It is developed for convenient application of the robust dose-response
                              estimation to real-world data analysis. ", align = "justify"),
                      p(id="paragraph","The previous version REAP can be reached at ",
-                       a(href = 'https://xinying-fang.shinyapps.io/REAP/', 'REAP Shiny app', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
+                       a(href = 'https://xinying-fang.shinyapps.io/REAP-1/', 'REAP-1 Shiny app', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
                      p(id="paragraph","Check here to obtain the user guide for REAP-2: ",
-                       a(href = 'https://github.com/vivid225/REAP-2/blob/main/REAP-2%20User%20Guide.pdf', 'REAP-2 User Guide', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end"))
+                       a(href = 'https://github.com/vivid225/REAP/blob/main/REAP-2%20User%20Guide.pdf', 'REAP-2 User Guide', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end"))
                  )
                ),
                

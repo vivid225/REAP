@@ -68,19 +68,25 @@ shinyServer(function(input, output) {
     # }
     # 
     # text1
-    warningmsg()[[1]]
+    if (is.list(dt.input$data)){
+      warningmsg()[[1]]
+    }
+    
   })
   
   output$text_warning2 <- renderText({
-    fulldt <- do.call(rbind, dt.input$data)
-    rownames(fulldt) = NULL
-    text2 = NULL
-    if (any(is.na(fulldt))){
-      text2 = "Your data contains missing values or some dose levels are non-positive. We delete the relavant observation to
+    if (is.list(dt.input$data)){
+      fulldt <- do.call(rbind, dt.input$data)
+      rownames(fulldt) = NULL
+      text2 = NULL
+      if (any(is.na(fulldt))){
+        text2 = "Your data contains missing values or some dose levels are non-positive. We delete the relavant observation to
       ensure the following analysis."
+      }
+      
+      text2
     }
     
-    text2
   })
   
   
@@ -120,186 +126,188 @@ shinyServer(function(input, output) {
   
   output$plot123 <- renderPlot({
     
-    nms <- dt.input$cells
-    dt <- dt.input$data
-    fulldt <- do.call(rbind, dt.input$data)
-    rownames(fulldt) = NULL
-    
-    n = length(nms)
-    
-    minval = min(fulldt[,1])
-    maxval = max(fulldt[,1])
-    
-    nlength <- 1000
-    
-    beta.pred <- c()
-    for (i in 1:n){
-      pred <- predict(mgcvmodels()[[i]], list(x = seq(minval, maxval, length.out=nlength)))
+    if (is.list(dt.input$data)){
+      nms <- dt.input$cells
+      dt <- dt.input$data
+      fulldt <- do.call(rbind, dt.input$data)
+      rownames(fulldt) = NULL
       
-      beta.pred <- c(beta.pred,inv.logit(pred))
+      n = length(nms)
       
-    }
-    
-    beta.pred.total <- data.frame(conc = rep(seq(minval, maxval, length.out=nlength),n),
-                                  resp = beta.pred)
-    beta.pred.total$cell = rep(nms, each=nlength)# Prediction dataset is set up
-    
-    fulldt.nms <- colnames(fulldt)
-    dt.ci <- Rmisc::summarySE(fulldt, measurevar=fulldt.nms[2], groupvars=c(fulldt.nms[1],fulldt.nms[3]))
-    dt.ci <- subset(dt.ci, dt.ci$N > 1)
-    
-    dt.ci$LCL = dt.ci[,fulldt.nms[2]]-dt.ci$sd
-    dt.ci$UCL = dt.ci[,fulldt.nms[2]]+dt.ci$sd # Build std CI
-    dt.ci$UCL_l = ifelse(dt.ci$UCL > 1, 1 , NA)
-    dt.ci$LCL_l = ifelse(dt.ci$LCL < 0, 0 , NA) # Examine whether CI exceed
-    UCL_index = which(dt.ci$UCL > 1)
-    LCL_index = which(dt.ci$LCL < 0)
-    
-    dt.ci$LCL[LCL_index] <- 0
-    dt.ci$UCL[UCL_index] <- 1
-    
-    # Add (0,1) data points or (1,1) data points
-    models = mgcvmodels()
-    
-    if (!input$showAsLog){
-      df01 = c()
-      for (i in 1:length(nms)){
-        if (models[[i]]$coefficients[2] < 0){ # determine whether b1 is pos/neg
-          df01 = rbind(df01, c(0,1))
-        } else {
-          df01 = rbind(df01, c(1,1,nms[i]))
-        }
-      }
+      minval = min(fulldt[,1])
+      maxval = max(fulldt[,1])
       
-      df01 = data.frame(df01)
-      df01$X3 = nms
-      colnames(df01) = colnames(beta.pred.total)
-      beta.pred.total <- rbind(beta.pred.total, df01)
-    }
-    
-    
-    
-    ## Add IC50/%effect estimation points on x axis
-    if (!is.na(input$effectpct)){
-      effect_num = 0.01*input$effectpct
+      nlength <- 1000
       
-      ic50dt = data.frame(agent = nms,
-                          xval = NA,
-                          yval = NA)
+      beta.pred <- c()
       for (i in 1:n){
-        dt.pred.select = subset(beta.pred.total, beta.pred.total[,3]==nms[i])
-        index = which.min(abs(dt.pred.select[,2]-effect_num))
-        ic50dt[i,2] = dt.pred.select[index,1]
-        ic50dt[i,3] = -0.03
-        # print(dt.pred.select[index,])
-        if (min(dt.pred.select[,2]) > effect_num | max(dt.pred.select[,2]) < effect_num){ # if effect estimation does not exist in the graph
-          ic50dt[i,2] = NA
-          ic50dt[i,3] = NA
-        }
+        pred <- predict(mgcvmodels()[[i]], list(x = seq(minval, maxval, length.out=nlength)))
+        
+        beta.pred <- c(beta.pred,inv.logit(pred))
+        
       }
       
-      for (i in 1:nrow(ic50dt)){
-        ind = which(abs(ic50dt$xval - ic50dt$xval[i])==0) 
-        if (length(ind) >=2){ # Check if IC50 of any two or more agents stack upon each other
-          k=-0.03
-          for (j in 2:length(ind)){
-            k = k+0.015
-            ic50dt$yval[ind[j]] = k
+      beta.pred.total <- data.frame(conc = rep(seq(minval, maxval, length.out=nlength),n),
+                                    resp = beta.pred)
+      beta.pred.total$cell = rep(nms, each=nlength)# Prediction dataset is set up
+      
+      fulldt.nms <- colnames(fulldt)
+      dt.ci <- Rmisc::summarySE(fulldt, measurevar=fulldt.nms[2], groupvars=c(fulldt.nms[1],fulldt.nms[3]))
+      dt.ci <- subset(dt.ci, dt.ci$N > 1)
+      
+      dt.ci$LCL = dt.ci[,fulldt.nms[2]]-dt.ci$sd
+      dt.ci$UCL = dt.ci[,fulldt.nms[2]]+dt.ci$sd # Build std CI
+      dt.ci$UCL_l = ifelse(dt.ci$UCL > 1, 1 , NA)
+      dt.ci$LCL_l = ifelse(dt.ci$LCL < 0, 0 , NA) # Examine whether CI exceed
+      UCL_index = which(dt.ci$UCL > 1)
+      LCL_index = which(dt.ci$LCL < 0)
+      
+      dt.ci$LCL[LCL_index] <- 0
+      dt.ci$UCL[UCL_index] <- 1
+      
+      # Add (0,1) data points or (1,1) data points
+      models = mgcvmodels()
+      
+      if (!input$showAsLog){
+        df01 = c()
+        for (i in 1:length(nms)){
+          if (models[[i]]$coefficients[2] < 0){ # determine whether b1 is pos/neg
+            df01 = rbind(df01, c(0,1))
+          } else {
+            df01 = rbind(df01, c(1,1,nms[i]))
           }
         }
         
+        df01 = data.frame(df01)
+        df01$X3 = nms
+        colnames(df01) = colnames(beta.pred.total)
+        beta.pred.total <- rbind(beta.pred.total, df01)
       }
-    }
-    
-    
-    ## specify parameters for ggplot
-    shapenum = 16
-    ciwidth = input$lWidth
-    legendsize = input$legendSize
-    # sizenum=10* (ciwidth+0.2)
-    sizenum = input$pSize
-    linesize = input$lineSize
-    
-    if (input$xlabel == ''){
-      xlabel = gsub("."," ", fulldt.nms[1],fixed=TRUE)
-    } else {
-      xlabel = input$xlabel
-    }
-    
-    if (input$ylabel == ''){
-      ylabel = gsub("."," ", fulldt.nms[2],fixed=TRUE)
-    } else {
-      ylabel = input$ylabel
-    }
-    
-    # if (input$cbox_logconc){
-    #   xval =
-    # }
-    
-    # Line plot only
-    p <- ggplot() +
-      geom_line(aes(x = beta.pred.total[,1], y = beta.pred.total[,2], color=beta.pred.total[,3]), size=linesize)+
-      xlab(xlabel) + ylab(ylabel) +
-      labs(color=fulldt.nms[3], shape=fulldt.nms[3]) 
-    
-    if (input$showAsLog){
-      p <- p + scale_x_continuous(trans = 'log10') 
-    }
-    
-    if (input$Means){
-      if (nrow(dt.ci) >= 1) {
-        p <- p + 
-          geom_point(aes(x=dt.ci[,fulldt.nms[1]], y=dt.ci[,fulldt.nms[2]], color=dt.ci[,fulldt.nms[3]]),shape=shapenum,size=sizenum) 
-      }
-    }
-    
-    if (input$Points){
-      p <- p + 
-        geom_point(aes(x=fulldt[,1], y=fulldt[,2], color=fulldt[,3]),shape=18,size=sizenum) 
-    }
-    
-    if (input$SDerr){
-      p <- p + 
-        geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, color=dt.ci[,fulldt.nms[3]]), width=ciwidth, size=linesize) + 
-        geom_errorbar(aes(x = dt.ci[,fulldt.nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,fulldt.nms[3]][LCL_index]), width=ciwidth, size=linesize) +
-        geom_linerange(aes(x = dt.ci[,fulldt.nms[1]][LCL_index],ymin = dt.ci[,fulldt.nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,fulldt.nms[3]][LCL_index]), size=linesize) +
-        geom_errorbar(aes(x = dt.ci[,fulldt.nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,fulldt.nms[3]][UCL_index]), width=ciwidth, size=linesize) +
-        geom_linerange(aes(x = dt.ci[,fulldt.nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,fulldt.nms[2]][UCL_index],color=dt.ci[,fulldt.nms[3]][UCL_index]), size=linesize) 
       
-      if (nrow(dt.ci) >= 1){
-        if (!identical(UCL_index, integer(0)) & (dt.ci[LCL_index,]["UCL"] - dt.ci[LCL_index,]["LCL"] >= 0.1)){
-          p <- p +
-            geom_segment(aes(x = dt.ci[,fulldt.nms[1]], xend = dt.ci[,fulldt.nms[1]], y = dt.ci[,fulldt.nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,fulldt.nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
+      
+      
+      ## Add IC50/%effect estimation points on x axis
+      if (!is.na(input$effectpct)){
+        effect_num = 0.01*input$effectpct
+        
+        ic50dt = data.frame(agent = nms,
+                            xval = NA,
+                            yval = NA)
+        for (i in 1:n){
+          dt.pred.select = subset(beta.pred.total, beta.pred.total[,3]==nms[i])
+          index = which.min(abs(dt.pred.select[,2]-effect_num))
+          ic50dt[i,2] = dt.pred.select[index,1]
+          ic50dt[i,3] = -0.03
+          # print(dt.pred.select[index,])
+          if (min(dt.pred.select[,2]) > effect_num | max(dt.pred.select[,2]) < effect_num){ # if effect estimation does not exist in the graph
+            ic50dt[i,2] = NA
+            ic50dt[i,3] = NA
+          }
         }
         
-        if (!identical(LCL_index, integer(0)) & (dt.ci[LCL_index,]["UCL"] - dt.ci[LCL_index,]["LCL"] >= 0.1)){
-          p <- p +
-            geom_segment(aes(x = dt.ci[,fulldt.nms[1]], xend = dt.ci[,fulldt.nms[1]], y = dt.ci[,fulldt.nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,fulldt.nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
+        for (i in 1:nrow(ic50dt)){
+          ind = which(abs(ic50dt$xval - ic50dt$xval[i])==0) 
+          if (length(ind) >=2){ # Check if IC50 of any two or more agents stack upon each other
+            k=-0.03
+            for (j in 2:length(ind)){
+              k = k+0.015
+              ic50dt$yval[ind[j]] = k
+            }
+          }
+          
         }
       }
       
       
+      ## specify parameters for ggplot
+      shapenum = 16
+      ciwidth = input$lWidth
+      legendsize = input$legendSize
+      # sizenum=10* (ciwidth+0.2)
+      sizenum = input$pSize
+      linesize = input$lineSize
       
+      if (input$xlabel == ''){
+        xlabel = gsub("."," ", fulldt.nms[1],fixed=TRUE)
+      } else {
+        xlabel = input$xlabel
+      }
+      
+      if (input$ylabel == ''){
+        ylabel = gsub("."," ", fulldt.nms[2],fixed=TRUE)
+      } else {
+        ylabel = input$ylabel
+      }
+      
+      # if (input$cbox_logconc){
+      #   xval =
+      # }
+      
+      # Line plot only
+      p <- ggplot() +
+        geom_line(aes(x = beta.pred.total[,1], y = beta.pred.total[,2], color=beta.pred.total[,3]), size=linesize)+
+        xlab(xlabel) + ylab(ylabel) +
+        labs(color=fulldt.nms[3], shape=fulldt.nms[3]) 
+      
+      if (input$showAsLog){
+        p <- p + scale_x_continuous(trans = 'log10') 
+      }
+      
+      if (input$Means){
+        if (nrow(dt.ci) >= 1) {
+          p <- p + 
+            geom_point(aes(x=dt.ci[,fulldt.nms[1]], y=dt.ci[,fulldt.nms[2]], color=dt.ci[,fulldt.nms[3]]),shape=shapenum,size=sizenum) 
+        }
+      }
+      
+      if (input$Points){
+        p <- p + 
+          geom_point(aes(x=fulldt[,1], y=fulldt[,2], color=fulldt[,3]),shape=18,size=sizenum) 
+      }
+      
+      if (input$SDerr){
+        p <- p + 
+          geom_errorbar(aes(x=dt.ci[,1],ymin=dt.ci$LCL, ymax=dt.ci$UCL, color=dt.ci[,fulldt.nms[3]]), width=ciwidth, size=linesize) + 
+          geom_errorbar(aes(x = dt.ci[,fulldt.nms[1]][LCL_index],ymin = dt.ci$UCL[LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,fulldt.nms[3]][LCL_index]), width=ciwidth, size=linesize) +
+          geom_linerange(aes(x = dt.ci[,fulldt.nms[1]][LCL_index],ymin = dt.ci[,fulldt.nms[2]][LCL_index], ymax = dt.ci$UCL[LCL_index],color=dt.ci[,fulldt.nms[3]][LCL_index]), size=linesize) +
+          geom_errorbar(aes(x = dt.ci[,fulldt.nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci$LCL[UCL_index],color=dt.ci[,fulldt.nms[3]][UCL_index]), width=ciwidth, size=linesize) +
+          geom_linerange(aes(x = dt.ci[,fulldt.nms[1]][UCL_index],ymin = dt.ci$LCL[UCL_index], ymax = dt.ci[,fulldt.nms[2]][UCL_index],color=dt.ci[,fulldt.nms[3]][UCL_index]), size=linesize) 
+        
+        if (nrow(dt.ci) >= 1){
+          if (!identical(UCL_index, integer(0)) & (dt.ci[LCL_index,]["UCL"] - dt.ci[LCL_index,]["LCL"] >= 0.1)){
+            p <- p +
+              geom_segment(aes(x = dt.ci[,fulldt.nms[1]], xend = dt.ci[,fulldt.nms[1]], y = dt.ci[,fulldt.nms[2]], yend = dt.ci$UCL_l, color=dt.ci[,fulldt.nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
+          }
+          
+          if (!identical(LCL_index, integer(0)) & (dt.ci[LCL_index,]["UCL"] - dt.ci[LCL_index,]["LCL"] >= 0.1)){
+            p <- p +
+              geom_segment(aes(x = dt.ci[,fulldt.nms[1]], xend = dt.ci[,fulldt.nms[1]], y = dt.ci[,fulldt.nms[2]], yend = dt.ci$LCL_l, color=dt.ci[,fulldt.nms[3]]),  arrow = arrow(length = unit(ciwidth+0.2, "cm")), size=linesize)
+          }
+        }
+        
+        
+        
+      }
+      
+      if (!is.na(input$effectpct)){
+        p <- p + 
+          geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=sizenum)
+      }
+      
+      p <- p +
+        scale_color_prism("colors") + 
+        scale_fill_prism("colors") +
+        theme_prism(palette = "colors", base_size = 16) +
+        scale_y_continuous(
+          limits = c(-0.05, 1),
+          # breaks = seq(-100, 500, 100),
+          guide = "prism_offset",
+          labels = function(x) x*100)
+      
+      drplots$plotci_scale <- p
+      
+      drplots$plotci_scale
     }
-    
-    if (!is.na(input$effectpct)){
-      p <- p + 
-        geom_point(aes(x=ic50dt$xval, y=ic50dt$yval,color=ic50dt$agent),shape=17,size=sizenum)
-    }
-    
-    p <- p +
-      scale_color_prism("colors") + 
-      scale_fill_prism("colors") +
-      theme_prism(palette = "colors", base_size = 16) +
-      scale_y_continuous(
-        limits = c(-0.05, 1),
-        # breaks = seq(-100, 500, 100),
-        guide = "prism_offset",
-        labels = function(x) x*100)
-    
-    drplots$plotci_scale <- p
-    
-    drplots$plotci_scale
     
   })
   
@@ -549,10 +557,13 @@ shinyServer(function(input, output) {
   
   output$modelsummary <- renderText({
     
-    modelsum.dt <- formulatbl()
-    modelsum.dt %>% 
-      kable(align = "c") %>%
-      kable_styling("striped") 
+    if (is.list(dt.input$data)){
+      modelsum.dt <- formulatbl()
+      modelsum.dt %>% 
+        kable(align = "c") %>%
+        kable_styling("striped") 
+    }
+    
   })
   
   
@@ -614,17 +625,19 @@ shinyServer(function(input, output) {
   })
   
   output$modelcomparison <- renderText({
-    
-    comp <- modelcomparisonresults()
-    
-    if (input$cbox_effectest == FALSE & input$cbox_slopes == FALSE){
-      comp
-    } else {
-      names_spaced <- c(" "," ")
-      comp %>% 
-        kable(align = "l",col.names = names_spaced) %>%
-        kable_styling("striped") 
+    if (is.list(dt.input$data)){
+      comp <- modelcomparisonresults()
+      
+      if (input$cbox_effectest == FALSE & input$cbox_slopes == FALSE){
+        comp
+      } else {
+        names_spaced <- c(" "," ")
+        comp %>% 
+          kable(align = "l",col.names = names_spaced) %>%
+          kable_styling("striped") 
+      }
     }
+    
   })
   
   
@@ -632,35 +645,37 @@ shinyServer(function(input, output) {
   
   output$summary <- renderText({
     
-    names_spaced <- c(
-      ' ', 'Estimate (m)', 'Std.Err.', 
-      'm > 1',' ',                 
-      'Estimate', 'Std.Err.','Pairwise comparison')
-    
-    hd = paste("IC/EC",input$effectpct,"Estimation")
-    
-    dt.footnote <- model.dt()$model
-    # names(dt.footnote)[4] <- paste0(names(dt.footnote)[4], 
-    #                                 footnote_marker_symbol(1))
-    # names(dt.footnote)[4] <- paste0(names(dt.footnote)[7], 
-    #                                 footnote_marker_symbol(2))
-    
-    options(knitr.kable.NA = '')
-    dt.footnote %>%
-      dplyr::select(Model,Slope,Slope.Std.Err,Slope.z.Pvalue,IC10,IC10.Std.Err,IC10.Pvalue)%>%
-      mutate(Slope = abs(Slope)) %>%
-      tibble::add_column(new_col = NA, .after = c("Slope.z.Pvalue"))%>%
-      kable(align = "c",col.names=names_spaced,format = "html") %>%
-      kable_styling("striped") %>%
-      column_spec(c(2,4,6,8), width = "6em") %>%
-      column_spec(c(5), width = "4em") %>%
-      add_header_above(c(" " = 1, "Hill Coefficient" = 3, " "=1, "Potency Estimation" = 3))%>%
-      footnote(
-        number = c("m > 1: p-value based on one-sided t-test for hypothesis testing on hill coefficient > 1", 
-                   "Pairwise comparison: p-value based on ANOVA test (Cohen, 2000). Concentrations that give specified effect (default at 50%) by group were sorted from low to high. Hypothesis testings on equal potency (i.e., concentration for ED50/IC50 by default) were conducted pairwise with the group right above (one rank lower).",
-                   "95% confidence intervals can be approximated by Estimate +/- t-value(0.975, df=n-1)*Std.Err.",
-                   "Effect estimate is indicated by triangles in the dose-response curve plot.")
-      )
+    if (is.list(dt.input$data)){
+      names_spaced <- c(
+        ' ', 'Estimate (m)', 'Std.Err.', 
+        'm > 1',' ',                 
+        'Estimate', 'Std.Err.','Pairwise comparison')
+      
+      hd = paste("IC/EC",input$effectpct,"Estimation")
+      
+      dt.footnote <- model.dt()$model
+      # names(dt.footnote)[4] <- paste0(names(dt.footnote)[4], 
+      #                                 footnote_marker_symbol(1))
+      # names(dt.footnote)[4] <- paste0(names(dt.footnote)[7], 
+      #                                 footnote_marker_symbol(2))
+      
+      options(knitr.kable.NA = '')
+      dt.footnote %>%
+        dplyr::select(Model,Slope,Slope.Std.Err,Slope.z.Pvalue,IC10,IC10.Std.Err,IC10.Pvalue)%>%
+        mutate(Slope = abs(Slope)) %>%
+        tibble::add_column(new_col = NA, .after = c("Slope.z.Pvalue"))%>%
+        kable(align = "c",col.names=names_spaced,format = "html") %>%
+        kable_styling("striped") %>%
+        column_spec(c(2,4,6,8), width = "6em") %>%
+        column_spec(c(5), width = "4em") %>%
+        add_header_above(c(" " = 1, "Hill Coefficient" = 3, " "=1, "Potency Estimation" = 3))%>%
+        footnote(
+          number = c("m > 1: p-value based on one-sided t-test for hypothesis testing on hill coefficient > 1", 
+                     "Pairwise comparison: p-value based on ANOVA test (Cohen, 2000). Concentrations that give specified effect (default at 50%) by group were sorted from low to high. Hypothesis testings on equal potency (i.e., concentration for ED50/IC50 by default) were conducted pairwise with the group right above (one rank lower).",
+                     "95% confidence intervals can be approximated by Estimate +/- t-value(0.975, df=n-1)*Std.Err.",
+                     "Effect estimate is indicated by triangles in the dose-response curve plot.")
+        )
+    }
     
   })
   
